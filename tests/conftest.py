@@ -8,7 +8,7 @@ from contextlib import contextmanager
 
 import pytest
 import requests
-from faker import Faker
+from faker import Faker # create fake data
 from playwright.sync_api import sync_playwright, Browser, Page
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -354,3 +354,33 @@ Command Examples:
 - Include slow tests: pytest --run-slow
 - Show output: pytest -v -s
 """
+
+# ======================================================================================
+# Some comments about this file:
+# ======================================================================================
+
+# Session-scoped fixture setup_test_database:
+# Runs once per pytest session (all tests run under this).
+# Drops all tables before starting tests: Base.metadata.drop_all(bind=test_engine)
+# Creates all tables fresh: Base.metadata.create_all(bind=test_engine)
+# Calls your custom init_db() (likely runs migrations or seeds initial data).
+# After all tests finish:
+    # Drops all tables again via drop_db() unless you use --preserve-db flag.
+# This means:
+    # You start with a clean database schema each test session, and by default, it cleans up after itself.
+
+
+# Function-scoped fixture db_session:
+# Provides a SQLAlchemy Session for each individual test.
+# After the test, truncates (deletes) all rows from every table to 
+    # ensure no leftover data between tests (unless --preserve-db).
+    # The --preserve-db flag disables table truncation and dropping, 
+        # so data/schema stays for inspection or debugging.
+# Closes the session.
+# This means:
+    # Each test gets a clean slate data-wise inside the same database schema.
+
+# Exactly! Each test starts with empty tables 
+    # (because your db_session fixture truncates all data after every test), 
+    # but if a test inserts or modifies rows during its run, 
+    # those changes are visible only within that test and then wiped out afterward.
