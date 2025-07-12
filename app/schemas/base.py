@@ -18,6 +18,8 @@ class PasswordMixin(BaseModel):
     """Mixin for password validation"""
     password: str = Field(min_length=6, max_length=128, example="SecurePass123")
 
+    # These methods run automatically during model initialization and validate or transform the input data.
+    # You do not call these validation methods manually — Pydantic calls them when you create the model,
     @model_validator(mode="before")
     @classmethod
     def validate_password(cls, values: dict) -> dict:
@@ -34,7 +36,7 @@ class PasswordMixin(BaseModel):
             raise ValueError("Password must contain at least one digit")
         return values
 
-
+# inherits from both UserBase and PasswordMixin.
 class UserCreate(UserBase, PasswordMixin):
     """Schema for user creation"""
     pass
