@@ -7,6 +7,9 @@ from app.schemas.user import UserResponse
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Depends: Declare a FastAPI dependency.
+    # It takes a single "dependable" callable (like a function).
+    # Don't call it directly, FastAPI will call it for you.
 def get_current_user(
     db,
     token: str = Depends(oauth2_scheme)
@@ -26,6 +29,7 @@ def get_current_user(
     if user is None:
         raise credentials_exception
         
+    # Converts the ORM User object into a UserResponse (Pydantic model) using Pydantic's model_validate().
     return UserResponse.model_validate(user)  # Updated from from_orm
 
 def get_current_active_user(
