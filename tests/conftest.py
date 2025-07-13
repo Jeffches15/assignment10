@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Database Configuration
 # ======================================================================================
 fake = Faker()
-Faker.seed(12345)
+Faker.seed(56532)
 
 logger.info(f"Using database URL: {settings.DATABASE_URL}")
 
