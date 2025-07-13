@@ -19,6 +19,7 @@ Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Move to config
+# The SECRET_KEY is a random, private string used to cryptographically sign and verify JWT tokens.
 SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
