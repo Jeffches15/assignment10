@@ -174,6 +174,11 @@ def test_user(db_session: Session) -> User:
     Create and return a single test user.
     """
     user_data = create_fake_user()
+    plain_password = user_data.pop("password")  # remove plain password
+    
+    # Hash the password and add password_hash
+    user_data["password_hash"] = User.hash_password(plain_password)
+    
     user = User(**user_data)
     db_session.add(user)
     db_session.commit()
@@ -197,14 +202,11 @@ def seed_users(db_session: Session, request) -> List[User]:
         num_users = 5
 
     users = []
-    for _ in range(num_users):
-        user_data = create_fake_user()
-        user = User(**user_data)
+    for _ in range(3):
+        data = create_fake_user()
+        user = User.register(db_session, data)
         users.append(user)
-        db_session.add(user)
-
     db_session.commit()
-    logger.info(f"Seeded {len(users)} users into the test database.")
     return users
 
 # ======================================================================================
