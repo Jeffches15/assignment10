@@ -6,6 +6,9 @@ import pydantic_core
 from sqlalchemy.exc import IntegrityError
 from app.models.user import User
 
+# Note: User.register() uses UserCreate for input validation.
+    # meaning we dont need to change password to password_hash
+
 ###############################
 ### Password Handling Tests ###
 ###############################
@@ -19,7 +22,7 @@ def test_password_hashing(db_session, fake_user_data):
         last_name=fake_user_data['last_name'],
         email=fake_user_data['email'],
         username=fake_user_data['username'],
-        password=hashed
+        password_hash=hashed
     )
     
     assert user.verify_password(original_password) is True
