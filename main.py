@@ -70,6 +70,8 @@ async def add_route(operation: OperationRequest):
     """
     try:
         result = add(operation.a, operation.b)
+        # FastAPI sees you're returning a OperationResponse object.
+        # It automatically serializes it to JSON:
         return OperationResponse(result=result)
     except Exception as e:
         logger.error(f"Add Operation Error: {str(e)}")
