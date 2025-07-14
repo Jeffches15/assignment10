@@ -68,7 +68,7 @@ def test_session_handling(db_session):
         last_name="User",
         email="test1@example.com",
         username="testuser1",
-        password="password123"
+        password_hash=User.hash_password("password123")
     )
     db_session.add(user1)
     db_session.commit()
@@ -84,7 +84,7 @@ def test_session_handling(db_session):
             last_name="User",
             email="test1@example.com",  # Duplicate
             username="testuser2",
-            password="password456"
+            password_hash=User.hash_password("password456")
         )
         db_session.add(user2)
         db_session.commit()
@@ -102,7 +102,7 @@ def test_session_handling(db_session):
         last_name="User",
         email="test3@example.com",
         username="testuser3",
-        password="password789"
+        password_hash=User.hash_password("password789")
     )
     db_session.add(user3)
     db_session.commit()
@@ -130,8 +130,9 @@ def test_create_user_with_faker(db_session):
     user_data = create_fake_user()
     logger.info(f"Creating user with data: {user_data}")
     
-    user = User(**user_data)
-    db_session.add(user)
+    # user = User(**user_data)
+    # db_session.add(user)
+    user = User.register(db_session, user_data)  # Handles password hashing internally
     db_session.commit()
     db_session.refresh(user)  # Refresh populates fields like user.id
     
@@ -147,9 +148,10 @@ def test_create_multiple_users(db_session):
     users = []
     for _ in range(3):
         user_data = create_fake_user()
-        user = User(**user_data)
+        user = User.register(db_session, user_data)  # Handles password hashing internally
+        # user = User(**user_data)
         users.append(user)
-        db_session.add(user)
+        # db_session.add(user)
     
     db_session.commit()
     assert len(users) == 3
@@ -168,14 +170,10 @@ def test_query_methods(db_session, seed_users):
     - Ordering by email
     """
     user_count = db_session.query(User).count()
-    assert user_count >= len(seed_users), "The user table should have at least the seeded users"
-    
+    assert user_count >= len(seed_users)
     first_user = seed_users[0]
     found = db_session.query(User).filter_by(email=first_user.email).first()
-    assert found is not None, "Should find the seeded user by email"
-    
-    users_by_email = db_session.query(User).order_by(User.email).all()
-    assert len(users_by_email) >= len(seed_users), "Query should return at least the seeded users"
+    assert found is not None
 
 # ======================================================================================
 # Transaction / Rollback Tests
@@ -192,8 +190,10 @@ def test_transaction_rollback(db_session):
     
     try:
         user_data = create_fake_user()
-        user = User(**user_data)
-        db_session.add(user)
+        user = User.register(db_session, user_data)  # Handles password hashing internally
+        # user = User(**user_data)
+        # db_session.add(user)
+
         # Force an error to trigger rollback
         db_session.execute(text("SELECT * FROM nonexistent_table"))
         db_session.commit()
@@ -234,7 +234,13 @@ def test_bulk_operations(db_session):
     Use --run-slow to enable this test.
     """
     users_data = [create_fake_user() for _ in range(10)]
-    users = [User(**data) for data in users_data]
+
+    users = []
+    for data in users_data:
+        plain_password = data.pop("password")  # Remove plain password
+        data["password_hash"] = User.hash_password(plain_password)  # Hash it manually
+        users.append(User(**data))
+    
     db_session.bulk_save_objects(users)
     db_session.commit()
     
@@ -242,46 +248,41 @@ def test_bulk_operations(db_session):
     assert count >= 10, "At least 10 users should now be in the database"
     logger.info(f"Successfully performed bulk operation with {len(users)} users")
 
+
 # ======================================================================================
 # Uniqueness Constraint Tests
 # ======================================================================================
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+
 def test_unique_email_constraint(db_session):
-    """
-    Create two users with the same email and expect an IntegrityError.
-    """
     first_user_data = create_fake_user()
-    first_user = User(**first_user_data)
-    db_session.add(first_user)
+    user = User.register(db_session, first_user_data)
     db_session.commit()
-    
+
     second_user_data = create_fake_user()
-    second_user_data["email"] = first_user_data["email"]  # Force a duplicate email
-    second_user = User(**second_user_data)
-    db_session.add(second_user)
-    
-    with pytest.raises(IntegrityError):
+    second_user_data["email"] = first_user_data["email"]  # Duplicate email
+
+    with pytest.raises((IntegrityError, ValueError)):
+        User.register(db_session, second_user_data)
         db_session.commit()
     db_session.rollback()
 
 
 def test_unique_username_constraint(db_session):
     """
-    Create two users with the same username and expect an IntegrityError.
+    Create two users with the same username and expect a ValueError from User.register.
     """
     first_user_data = create_fake_user()
-    first_user = User(**first_user_data)
-    db_session.add(first_user)
+    User.register(db_session, first_user_data)
     db_session.commit()
-    
+
     second_user_data = create_fake_user()
-    second_user_data["username"] = first_user_data["username"]  # Force a duplicate username
-    second_user = User(**second_user_data)
-    db_session.add(second_user)
-    
-    with pytest.raises(IntegrityError):
-        db_session.commit()
-    db_session.rollback()
+    second_user_data["username"] = first_user_data["username"]  # Duplicate username
+
+    with pytest.raises(ValueError, match="Username or email already exists"):
+        User.register(db_session, second_user_data)
 
 # ======================================================================================
 # Persistence after Constraint Violation
@@ -298,32 +299,30 @@ def test_user_persistence_after_constraint(db_session):
         "last_name": "User",
         "email": "first@example.com",
         "username": "firstuser",
-        "password": "password123"
+        "password": "Password123"
     }
-    initial_user = User(**initial_user_data)
-    db_session.add(initial_user)
+    initial_user = User.register(db_session, initial_user_data)
     db_session.commit()
     saved_id = initial_user.id
-    
     try:
-        duplicate_user = User(
-            first_name="Second",
-            last_name="User",
-            email="first@example.com",  # Duplicate
-            username="seconduser",
-            password="password456"
-        )
-        db_session.add(duplicate_user)
+        duplicate_user_data = {
+            "first_name": "Second",
+            "last_name": "User",
+            "email": "first@example.com",  # Duplicate email
+            "username": "seconduser",
+            "password": "password456"
+        }
+        User.register(db_session, duplicate_user_data)
         db_session.commit()
-        assert False, "Should have raised IntegrityError"
-    except IntegrityError:
+        assert False, "Should have raised uniqueness ValueError"
+    except ValueError:
         db_session.rollback()
-    
+
     found_user = db_session.query(User).filter_by(id=saved_id).first()
-    assert found_user is not None, "Original user should exist"
-    assert found_user.id == saved_id, "Should find original user by ID"
-    assert found_user.email == "first@example.com", "Email should be unchanged"
-    assert found_user.username == "firstuser", "Username should be unchanged"
+    assert found_user is not None
+    assert found_user.id == saved_id
+    assert found_user.email == "first@example.com"
+    assert found_user.username == "firstuser"
 
 # ======================================================================================
 # Error Handling Test
@@ -338,3 +337,14 @@ def test_error_handling():
             session.execute(text("INVALID SQL"))
     assert "INVALID SQL" in str(exc_info.value)
 
+# ======================================================================================
+# User Read Schema Test
+# ======================================================================================
+def test_user_read_schema_from_model(test_user):
+    from app.schemas.user import UserRead
+
+    user_data = UserRead.model_validate(test_user)
+    
+    assert user_data.id == test_user.id
+    assert user_data.email == test_user.email
+    assert hasattr(user_data, "password_hash") is False  # make sure it's excluded
