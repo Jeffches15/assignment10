@@ -63,3 +63,17 @@ class UserLogin(BaseModel):
             }
         }
     )
+
+class UserRead(BaseModel):
+    """Schema for returning safe user data (no password hash)"""
+    id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+    username: str
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
