@@ -215,6 +215,9 @@ def fastapi_server():
     """
     Start and manage a FastAPI test server, if needed for integration tests.
     """
+    # scope="session":
+        # This fixture is run once per test session, not before every test.
+        # It’s shared by all tests that depend on it (usually E2E tests).
     server_url = 'http://127.0.0.1:8000/'
     logger.info("Starting test server...")
 
