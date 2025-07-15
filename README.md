@@ -1,6 +1,18 @@
 # 📦 Project Setup
 
----
+##  How to run tests locally
+
+## Docker Hub Repo/Images
+https://hub.docker.com/r/jeffches15/assignment10
+
+![Docker image success](./screenshots/screenshot%20of%20successful%20docker%20image.png)
+
+![Docker image success](./screenshots/screenshot%20of%20successful%20docker%20image2.png)
+
+## Successful GitHub Actions
+
+![GitHub Actions success](./screenshots/screenshot%20of%20successful%20github%20actions.png)
+
 
 # 🧩 1. Install Homebrew (Mac Only)
 
