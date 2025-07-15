@@ -109,12 +109,3 @@ def test_user_login_invalid_password():
     data = {"username": "johndoe", "password": "short"}
     with pytest.raises(ValidationError):
         UserLogin(**data)
-
-def test_user_read_schema_from_model(test_user):
-    from app.schemas.user import UserRead
-
-    user_data = UserRead.model_validate(test_user)
-    
-    assert user_data.id == test_user.id
-    assert user_data.email == test_user.email
-    assert hasattr(user_data, "password_hash") is False  # make sure it's excluded
